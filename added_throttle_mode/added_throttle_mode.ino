@@ -16,7 +16,8 @@ int stcorr1 = 0, stcorr2 = 0, sdlcorr1 = 0, sdlcorr2 = 0, sdrcorr1 = 0, sdrcorr2
 double stkp = 6, stki = 0.03, stkd = 150, sdkp = 2, sdki = 0.06, sdkd = 150;    //Kp,Ki,Kd for AutoPID Lib
 uint8_t stmax = 100, stmin = 0, sdmax = 100, sdmin = 0;    //Variables for min and max adjust pwm
 float curangle;
-int prevangle = 0, pwmfw, pwmbk, pwmlt, pwmrt, pwm;       //pwm variables for each direction
+int prevangle = 0;
+int32_t pwmfw, pwmbk, pwmlt, pwmrt, pwm, pwmthr;      //pwm variables for each direction
 //Objects created for included libraries
 GyroRead gyro;                //Creating object for GyroRead Lib
 AutoPID straight(&curangle, &prevangle, &stcorr1, &stcorr2, stmin, stmax, stkp, stki, stkd);      //AutoPID Obj
@@ -50,6 +51,11 @@ void mapping()      //Call the function for mapping the pwm recieved from the re
   pwmrt = map(pwmrt, 0, 500, 0, 255);
 
 }
+void mapforthr()
+{
+  pwmthr = map(pwmthr, 1000, 1600, 0, 255);
+  Serial.println(pwmthr);
+}
 void updateangle()
 {
   curangle = gyro.getAngle();
@@ -70,10 +76,10 @@ void stoped()       //Call the function to stop the movement
   analogWrite(RIGHT_PIN1, 0);
   analogWrite(NOSE_PIN2, 0);
   analogWrite(NOSE_PIN1, 0);
-  pwmfw = pwmbk = pwmlt = pwmrt = pwm = 0;//just to be on safe side so it will not give prev pwm when forward called
+  pwmfw = pwmbk = pwmlt = pwmrt = pwm = 0;    //just to be on safe side so it will not give prev pwm when forward called
   sdrcorr1 = sdrcorr2 = sdlcorr1 = sdlcorr2 = stcorr1 = stcorr2 = 0;    //If not written then it does not become 0 when stopped and bot "Gandtay"
 
-   straight.reset();    //used to set millis to 0, improves Ki adjustment
+  straight.reset();    //used to set millis to 0, improves Ki adjustment
   sidewayl.reset();
   sidewayr.reset();
 
@@ -107,7 +113,7 @@ void forward()      //Call the function for forward movement, adjust is included
   {
     analogWrite(LEFT_PIN1, 0);
     analogWrite(LEFT_PIN2, 0.5 * pwmrt + pwmbk - pwmfw - 0.5 * pwmlt - sdlcorr1 );
-    // Serial.print("in else left ");
+    //Serial.print("in else left ");
     //Serial.println(0.5 * pwmrt + pwmbk - pwmfw - 0.5 * pwmlt - sdlcorr1);
   }
   if ((pwmfw - 0.5 * pwmlt + 0.5 * pwmrt + sdrcorr2 - pwmbk) > 0)
@@ -145,14 +151,123 @@ void ccwise()        //Call the function for counter-clock wise movement
 }
 void loop() {
   IBus.loop();
-  if (IBus.readChannel(4) == 2000) //Use to cut off batttery with relay
+  if (IBus.readChannel(4) == 1000) //Use to cut off batttery with relay
   {
-    //Serial.println("OFF");
+    Serial.println("OFF");
     stoped();
   }
-  else if (IBus.readChannel(7) == 2000)
+  else if (IBus.readChannel(5) == 2000) // Throttle Mode
   {
-    // Serial.println("Line Tracing Mode");
+    IBus.loop();    //Call always in loop to recieve signal from remote
+    //Condition for stop below
+    if ((IBus.readChannel(3) >= 1465 && IBus.readChannel(3) <=  1530) &&
+        (IBus.readChannel(0) >= 1465 && IBus.readChannel(0) <=  1535) &&
+        (IBus.readChannel(1) >= 1465 && IBus.readChannel(1) <=  1535))
+    {
+      stoped();
+      updateangle();
+      //Serial.println(sdlcorr1);
+      //Serial.println(sdlcorr2);
+      //Serial.println(pwmfw);
+      //Serial.println(pwmbk);
+    }
+    pwmthr = IBus.readChannel(2);
+    mapforthr();
+    if (IBus.readChannel(3) > 1535)     //rotation clockwise
+    {
+      IBus.loop();
+      pwm = abs(IBus.readChannel(3) - 1500 );
+      pwm = pwm * pwmthr / 500;
+      mapping();
+      cwise();
+      updateangle();
+    }
+    if (IBus.readChannel(3) < 1465)     //rotation anti-clockwise
+    {
+      IBus.loop();
+      pwm = abs( 1500 - IBus.readChannel(3) );
+      pwm = pwm * pwmthr / 500;
+      mapping();
+      ccwise();
+      updateangle();
+    }
+    while (IBus.readChannel(1) > 1535)     //forward
+    {
+      pwmthr = IBus.readChannel(2);
+      mapforthr();
+      IBus.loop();
+      if (IBus.readChannel(0) > 1535) //right
+      {
+        pwmrt = abs(IBus.readChannel(0) - 1500);
+        pwmrt = pwmrt * pwmthr / 500;
+        sidewayr.run();
+      }
+      if (IBus.readChannel(0) < 1465)  //left
+      {
+        pwmlt = abs(1500 - IBus.readChannel(0));
+        pwmlt = pwmlt * pwmthr / 500;
+        sidewayl.run();
+      }
+      straight.run();
+      pwmfw = abs(IBus.readChannel(1) - 1500 );
+      pwmfw = pwmfw * pwmthr / 500;
+      mapping();
+
+      // Serial.println(pwmfw);
+      forward();
+      curangle = gyro.getAngle();
+    }
+    while (IBus.readChannel(1) < 1465)     //back
+    {
+      pwmthr = IBus.readChannel(2);
+      mapforthr();
+      IBus.loop();
+      if (IBus.readChannel(0) > 1535) //right
+      {
+        pwmrt = abs(IBus.readChannel(0) - 1500);
+        pwmrt = pwmrt * pwmthr / 500;
+        sidewayr.run();
+      }
+      if (IBus.readChannel(0) < 1465)  //left
+      {
+        pwmlt = abs(1500 - IBus.readChannel(0));
+        pwmlt = pwmlt * pwmthr / 500;
+        sidewayl.run();
+      }
+      straight.run();
+      pwmbk = abs(1500 - IBus.readChannel(1) );
+      pwmbk = pwmbk * pwmthr / 500;
+      mapping();
+      //Serial.println(pwmbk);
+      forward();
+      curangle = gyro.getAngle();
+    }
+    if (IBus.readChannel(0) > 1535)     //right
+    {
+      IBus.loop();
+      sidewayr.run();
+      pwmrt = abs(IBus.readChannel(0) - 1500);
+      pwmrt = pwmrt * pwmthr / 500;
+      mapping();
+      // Serial.println(pwmrt);
+      forward();
+      curangle = gyro.getAngle();
+    }
+    if (IBus.readChannel(0) < 1465)     //left
+    {
+      IBus.loop();
+      sidewayl.run();
+      pwmlt = abs(1500 - IBus.readChannel(0));
+      pwmlt = pwmlt * pwmthr / 500;
+      mapping();
+      //Serial.println(pwmlt);
+      forward();
+      curangle = gyro.getAngle();
+    }
+  }
+  else if (IBus.readChannel(7) == 2000) //Line tracing mode
+  {
+    Serial.println("Line Tracing Mode");
     if ((IBus.readChannel(3) >= 1465 && IBus.readChannel(3) <=  1530) &&
         (IBus.readChannel(0) >= 1465 && IBus.readChannel(0) <=  1535) &&
         (IBus.readChannel(1) >= 1465 && IBus.readChannel(1) <=  1535))
@@ -161,10 +276,10 @@ void loop() {
       updateangle();
     }
   }
-  else
+  else  // Defalut basic code
   {
     // Serial.println(IBus.readChannel(5));
-    // Serial.println("Default");
+    Serial.println("Default");
     IBus.loop();    //Call always in loop to recieve signal from remote
     //Condition for stop below
     if ((IBus.readChannel(3) >= 1465 && IBus.readChannel(3) <=  1530) &&
@@ -213,6 +328,7 @@ void loop() {
 
       // Serial.println(pwmfw);
       forward();
+      pwmlt = pwmrt = pwm = 0;
       curangle = gyro.getAngle();
     }
     while (IBus.readChannel(1) < 1465)     //back
@@ -233,6 +349,7 @@ void loop() {
       mapping();
       //Serial.println(pwmbk);
       forward();
+      pwmlt = pwmrt = pwm = 0;
       curangle = gyro.getAngle();
     }
     if (IBus.readChannel(0) > 1535)     //right
