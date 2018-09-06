@@ -28,28 +28,59 @@ void AutoPID::run() {
     _lastStep = millis();
     if (*_setpoint > *_input)
     {
-      double _error = *_setpoint - *_input;
+      double _error;
+      if ((*_setpoint - *_input) < 200)
+        _error = *_setpoint - *_input;
+      else if ((*_setpoint - *_input) > 200)
+      {
+        *_input += 360;
+        _error = abs(*_input - *_setpoint) ;
+        *_input -= 360;
+      }
       _integral += (_error + _previousError) / 2 * _dT / 1000.0;   //Riemann sum integral
       //_integral = constrain(_integral, _outputMin/_Ki, _outputMax/_Ki);
       double _dError = (_error - _previousError) / _dT / 1000.0;   //derivative
       _previousError = _error;
       double PID = (_Kp * _error) + (_Ki * _integral) + (_Kd * _dError);
       //*_output = _outputMin + (constrain(PID, 0, 1) * (_outputMax - _outputMin));
-      *_output1 = constrain(PID, _outputMin, _outputMax);
-      *_output2 = 0;
+      if ((*_setpoint - *_input) < 200)
+      {
+        *_output1 = constrain(PID, _outputMin, _outputMax);
+        *_output2 = 0;
+      }
+      else if ((*_setpoint - *_input) > 200)
+      {
+        *_output1 = 0;
+        *_output2 = constrain(PID, _outputMin, _outputMax);
+      }
     }
     else if (*_setpoint < *_input)
     {
-      double _error = *_input - *_setpoint ;
+      double _error;
+      if ((*_input - *_setpoint) < 200)
+        _error = *_input - *_setpoint ;
+      else if ((*_input - *_setpoint) > 200)
+      {
+        *_setpoint += 360;
+        _error = abs(*_input - *_setpoint) ;
+        *_setpoint -= 360;
+      }
       _integral += (_error + _previousError) / 2 * _dT / 1000.0;   //Riemann sum integral
       //_integral = constrain(_integral, _outputMin/_Ki, _outputMax/_Ki);
       double _dError = (_error - _previousError) / _dT / 1000.0;   //derivative
       _previousError = _error;
       double PID = (_Kp * _error) + (_Ki * _integral) + (_Kd * _dError);
       //*_output = _outputMin + (constrain(PID, 0, 1) * (_outputMax - _outputMin));
-      *_output2 = constrain(PID, _outputMin, _outputMax);
-      *_output1 = 0;
-
+      if ((*_input - *_setpoint) < 200)
+      {
+        *_output2 = constrain(PID, _outputMin, _outputMax);
+        *_output1 = 0;
+      }
+      else if ((*_input - *_setpoint) > 200)
+      {
+        *_output2 = 0;
+        *_output1 = constrain(PID, _outputMin, _outputMax);
+      }
     }
   }
 

@@ -43,14 +43,14 @@ void setup() {
 
 void mapping()      //Call the function for mapping the pwm recieved from the remote
 {
-  pwm = map(pwm, 0, 500, 0, 255);
-  pwmfw = map(pwmfw, 0, 500, 0, 255);
-  pwmbk = map(pwmbk, 0, 500, 0, 255);
-  pwmlt = map(pwmlt, 0, 500, 0, 255);
-  pwmrt = map(pwmrt, 0, 500, 0, 255);
+  pwm = map(pwm, 0, 500, 0, 200);   //to decrease the speed of yaw
+  pwmfw = map(pwmfw, 0, 500, 0, 200);
+  pwmbk = map(pwmbk, 0, 500, 0, 200);
+  pwmlt = map(pwmlt, 0, 500, 0, 200);
+  pwmrt = map(pwmrt, 0, 500, 0, 200);
 
 }
-void updateangle()
+void updateangle()    // remember to add fail safe code in here
 {
   curangle = gyro.getAngle();
   prevangle = curangle;
