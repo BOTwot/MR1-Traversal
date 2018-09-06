@@ -16,8 +16,8 @@ int stcorr1 = 0, stcorr2 = 0, sdlcorr1 = 0, sdlcorr2 = 0, sdrcorr1 = 0, sdrcorr2
 double stkp = 6, stki = 0.03, stkd = 150, sdkp = 2, sdki = 0.06, sdkd = 150;    //Kp,Ki,Kd for AutoPID Lib
 uint8_t stmax = 100, stmin = 0, sdmax = 100, sdmin = 0;    //Variables for min and max adjust pwm
 float curangle;
-int prevangle = 0;
-int32_t pwmfw, pwmbk, pwmlt, pwmrt, pwm, pwmthr;      //pwm variables for each direction
+int prevangle = 0;    //pwm variables for each direction
+int32_t pwmfw, pwmbk, pwmlt, pwmrt, pwm, pwmthr;      //32 bit int used to avoid the overflow in throttle mode
 //Objects created for included libraries
 GyroRead gyro;                //Creating object for GyroRead Lib
 AutoPID straight(&curangle, &prevangle, &stcorr1, &stcorr2, stmin, stmax, stkp, stki, stkd);      //AutoPID Obj
@@ -44,19 +44,19 @@ void setup() {
 
 void mapping()      //Call the function for mapping the pwm recieved from the remote
 {
-  pwm = map(pwm, 0, 500, 0, 255);
-  pwmfw = map(pwmfw, 0, 500, 0, 255);
-  pwmbk = map(pwmbk, 0, 500, 0, 255);
-  pwmlt = map(pwmlt, 0, 500, 0, 255);
-  pwmrt = map(pwmrt, 0, 500, 0, 255);
+  pwm = map(pwm, 0, 500, 0, 200);   //to decrease the speed of yaw
+  pwmfw = map(pwmfw, 0, 500, 0, 200);
+  pwmbk = map(pwmbk, 0, 500, 0, 200);
+  pwmlt = map(pwmlt, 0, 500, 0, 200);
+  pwmrt = map(pwmrt, 0, 500, 0, 200);
 
 }
-void mapforthr()
+void mapforthr()    //mapping for throttle, only till 1600 to avoid unnecessary movement of stick
 {
   pwmthr = map(pwmthr, 1000, 1600, 0, 255);
   Serial.println(pwmthr);
 }
-void updateangle()
+void updateangle()    // remember to add fail safe code in here
 {
   curangle = gyro.getAngle();
   prevangle = curangle;
@@ -155,6 +155,7 @@ void loop() {
   {
     Serial.println("OFF");
     stoped();
+    updateangle();
   }
   else if (IBus.readChannel(5) == 2000) // Throttle Mode
   {
@@ -165,7 +166,7 @@ void loop() {
         (IBus.readChannel(1) >= 1465 && IBus.readChannel(1) <=  1535))
     {
       stoped();
-      updateangle();
+      // updateangle();
       //Serial.println(sdlcorr1);
       //Serial.println(sdlcorr2);
       //Serial.println(pwmfw);
@@ -273,7 +274,7 @@ void loop() {
         (IBus.readChannel(1) >= 1465 && IBus.readChannel(1) <=  1535))
     {
       stoped();
-      updateangle();
+      //updateangle();
     }
   }
   else  // Defalut basic code
@@ -287,7 +288,7 @@ void loop() {
         (IBus.readChannel(1) >= 1465 && IBus.readChannel(1) <=  1535))
     {
       stoped();
-      updateangle();
+      // updateangle();
       Serial.println(sdlcorr1);
       Serial.println(sdlcorr2);
       //Serial.println(pwmfw);
