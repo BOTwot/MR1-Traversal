@@ -13,7 +13,7 @@
 #define RIGHT_PIN2 11
 //Global Varibles declared and somewhat defined
 int stcorr1 = 0, stcorr2 = 0, sdlcorr1 = 0, sdlcorr2 = 0, sdrcorr1 = 0, sdrcorr2 = 0;   //Variables for AutoPID only
-double stkp = 2, stki = 0.03, stkd = 180, sdkp = 2, sdki = 0.06, sdkd = 150;    //Kp,Ki,Kd for AutoPID Lib
+double stkp = 3, stki = 0.008, stkd = 175, sdkp = 2, sdki = 0.06, sdkd = 150;    //Kp,Ki,Kd for AutoPID Lib
 uint8_t stmax = 100, stmin = 0, sdmax = 100, sdmin = 0;    //Variables for min and max adjust pwm
 float curangle;
 int prevangle = 0;    //pwm variables for each direction
@@ -35,7 +35,7 @@ void setup() {
   Wire.begin();
   IBus.begin(Serial1);  //Library Function
   gyro.begin(8);        //Library Function
-  straight.setTimeStep(50);     //AutoPID Lib Functon
+  straight.setTimeStep(5);     //AutoPID Lib Functon
  // sidewayl.setTimeStep(50);      //AutoPID Lib Function
   //sidewayr.setTimeStep(50);      //AutoPID Lib Function
 }
