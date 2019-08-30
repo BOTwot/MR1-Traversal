@@ -1,4 +1,4 @@
-  #include "AutoPID.h"
+#include "AutoPID.h"
 
 AutoPID::AutoPID(float *input, int *setpoint, int *output1, int *output2, uint8_t outputMin, uint8_t outputMax, double Kp, double Ki, double Kd) {
   _input = input;
@@ -37,21 +37,9 @@ void AutoPID::run() {
         _error = abs(*_input - *_setpoint) ;
         *_input -= 360;
       }
-
-      double _dError = (_error - _previousError) / _dT / 1000.0;   //derivative
       _integral += (_error + _previousError) / 2 * _dT / 1000.0;   //Riemann sum integral
       //_integral = constrain(_integral, _outputMin/_Ki, _outputMax/_Ki);
-      //anti-windup
-      float u = _Kp * _error + _integral * _Ki + _dError * _Kd;
-      if ((((_error * u) > 0) && ((u > _outputMax) || (u < _outputMin)))) {
-        float d_int = _Ki * _error;
-        _integral -= d_int;
-        u -= d_int;
-        _e_old_i = 0;
-      }
-      else {
-        _e_old_i = _error;
-      }
+      double _dError = (_error - _previousError) / _dT / 1000.0;   //derivative
       _previousError = _error;
       double PID = (_Kp * _error) + (_Ki * _integral) + (_Kd * _dError);
       //*_output = _outputMin + (constrain(PID, 0, 1) * (_outputMax - _outputMin));
@@ -77,20 +65,9 @@ void AutoPID::run() {
         _error = abs(*_input - *_setpoint) ;
         *_setpoint -= 360;
       }
-      double _dError = (_error - _previousError) / _dT / 1000.0;   //derivative
       _integral += (_error + _previousError) / 2 * _dT / 1000.0;   //Riemann sum integral
       //_integral = constrain(_integral, _outputMin/_Ki, _outputMax/_Ki);
-      //anti-windup
-      float u = _Kp * _error + _integral * _Ki + _dError * _Kd;
-      if ((((_error * u) > 0) && ((u > _outputMax) || (u < _outputMin)))) {
-        float d_int = _Ki * _error;
-        _integral -= d_int;
-        u -= d_int;
-        _e_old_i = 0;
-      }
-      else {
-        _e_old_i = _error;
-      }
+      double _dError = (_error - _previousError) / _dT / 1000.0;   //derivative
       _previousError = _error;
       double PID = (_Kp * _error) + (_Ki * _integral) + (_Kd * _dError);
       //*_output = _outputMin + (constrain(PID, 0, 1) * (_outputMax - _outputMin));
@@ -112,7 +89,6 @@ void AutoPID::reset() {
   _lastStep = millis();
   _integral = 0;
   _previousError = 0;
-  _e_old_i = 0;
 }
 
 

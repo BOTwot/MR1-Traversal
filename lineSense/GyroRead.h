@@ -1,3 +1,4 @@
+
 #include <Arduino.h>
 #include <Wire.h>
 
@@ -18,7 +19,7 @@ class GyroRead
     {
       if (Wire.requestFrom(_addr, 4) == 4)
       I2C_readAnything (angle);
+      
       return angle;
     }
 };
-
